@@ -1,0 +1,14 @@
+{
+    "name": "p1-build",
+    "version": "0.0.0",
+    "description": "P1stream build environment",
+    "author": "Stéphan Kochen <stephan@kochen.nl>",
+    "repository": {
+        "type": "git",
+        "url": "http://github.com/p1stream/p1-build.git"
+    },
+    "main": "index.js",
+    "bin": {
+        "p1-build": "bin/p1-build.sh"
+    }
+}
