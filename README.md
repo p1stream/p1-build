@@ -30,11 +30,14 @@ Finally, install `p1-build` globally:
 
     $ npm -g install p1stream/p1-build
 
-And build your module with the usual commands, prefixed with `p1-build`. For
-example, one of the following:
+Now build your module with the usual commands, prefixed with `p1-build`.
+Probably start with something like:
 
-    $ p1-build node-gyp configure build
-    $ p1-build npm install .
+    $ p1-build npm install
+
+For incremental builds, you can also do something like:
+
+    $ p1-build node-gyp build
 
 ### License
 
