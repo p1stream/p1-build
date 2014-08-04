@@ -5,7 +5,7 @@ export REALHOME="${HOME}"
 export HOME="${REALHOME}/.p1stream/.node"
 
 # Current atom-shell version.
-export atom_shell_version="0.15.1"
+export atom_shell_version="0.15.2"
 
 # Current atom-shell node-gyp settings.
 export npm_config_dist_url="https://gh-contractor-zcbenz.s3.amazonaws.com/atom-shell/dist"
