@@ -1,10 +1,9 @@
-var os = require('os');
 var path = require('path');
 var util = require('util');
 
 exports.includeDir = path.join(__dirname, 'include');
 
-exports.platform = os.platform();
+exports.platform = process.platform;
 exports.arch = 'x64';
 
 exports.nodeVersion = '0.11.13';
