@@ -8,7 +8,7 @@ exports.platform = os.platform();
 exports.arch = 'x64';
 
 exports.nodeVersion = '0.11.13';
-exports.atomShellVersion = '0.15.2';
+exports.atomShellVersion = '0.15.7';
 
 exports.atomShellPackageUrl = util.format(
     'https://github.com/atom/atom-shell/releases/download/v%s/atom-shell-v%s-%s-%s.zip',
