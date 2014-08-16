@@ -20,7 +20,6 @@ namespace p1stream {
 // ----- PODs----
 
 typedef int64_t frame_time_t;
-typedef uint32_t fourcc_t;
 
 struct fraction_t {
     uint32_t num;
@@ -163,13 +162,13 @@ public:
 // Base for video sources.
 class video_source : public node::ObjectWrap {
 public:
-    // When a clock is linked, it will receive produce_video_frame() calls.
+    // When a source is linked, it will receive produce_video_frame() calls.
     // If the link method throws, it should return false.
     virtual bool link_video_source(video_source_context &ctx);
     virtual void unlink_video_source(video_source_context &ctx);
 
     // Called when the mixer is rendering a frame. Should call one of the
-    // render_*() callbacks.
+    // render_*() callbacks on the context object.
     virtual void produce_video_frame(video_source_context &ctx) = 0;
 };
 
@@ -254,7 +253,8 @@ inline lock_handle::lock_handle(lockable *object)
 
 inline lock_handle::~lock_handle()
 {
-    if (object_) object_->unlock();
+    if (object_ != nullptr)
+        object_->unlock();
 }
 
 inline lockable_mutex::lockable_mutex()
