@@ -29,7 +29,8 @@ exports.shellVars = {
 };
 
 exports.shell = function() {
-    Object.keys(exports.shellVars).forEach(function(k) {
+    var vars = exports.shellVars;
+    Object.keys(vars).forEach(function(k) {
         console.log('export %s=%s', k, vars[k]);
     });
 };
