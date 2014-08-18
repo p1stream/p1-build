@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Setup environment.
-$(node -e 'require("p1-build").shell()')
+BINDIR="$(dirname "${BASH_SOURCE}")"
+$(cd "${BINDIR}" && node -e 'require("p1-build").shell()')
 
 # Swap home directories for npm and node-gyp.
 export REALHOME="${HOME}"
