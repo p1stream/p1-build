@@ -15,7 +15,7 @@ exports.atomShellPackageUrl = util.format(
 
 exports.atomDistUrl = 'https://gh-contractor-zcbenz.s3.amazonaws.com/atom-shell/dist';
 
-exports.shellVars = {
+exports.env = {
     p1stream_include_dir: exports.includeDir,
     node_platform: exports.platform,
     node_arch: exports.arch,
@@ -29,8 +29,8 @@ exports.shellVars = {
 };
 
 exports.shell = function() {
-    var vars = exports.shellVars;
-    Object.keys(vars).forEach(function(k) {
-        console.log('export %s=%s', k, vars[k]);
+    var env = exports.env;
+    Object.keys(env).forEach(function(k) {
+        console.log('export %s=%s', k, env[k]);
     });
 };
