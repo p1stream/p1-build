@@ -2,6 +2,7 @@
     "name": "p1-build",
     "version": "0.0.0",
     "description": "P1stream build environment",
+    "private": true,
     "author": "Stéphan Kochen <stephan@kochen.nl>",
     "repository": {
         "type": "git",
