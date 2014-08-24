@@ -9,9 +9,11 @@ exports.arch = 'x64';
 exports.nodeVersion = '0.11.13';
 exports.atomShellVersion = '0.15.9';
 
+exports.atomShellPackage = util.format('atom-shell-v%s-%s-%s.zip',
+    exports.atomShellVersion, exports.platform, exports.arch);
 exports.atomShellPackageUrl = util.format(
-    'https://github.com/atom/atom-shell/releases/download/v%s/atom-shell-v%s-%s-%s.zip',
-    exports.atomShellVersion, exports.atomShellVersion, exports.platform, exports.arch);
+    'https://github.com/atom/atom-shell/releases/download/v%s/%s',
+    exports.atomShellVersion, exports.atomShellPackage);
 
 exports.atomDistUrl = 'https://gh-contractor-zcbenz.s3.amazonaws.com/atom-shell/dist';
 
@@ -21,6 +23,7 @@ exports.env = {
     node_arch: exports.arch,
     node_version: exports.version,
     atom_shell_version: exports.atomShellVersion,
+    atom_shell_package: exports.atomShellPackage,
     atom_shell_package_url: exports.atomShellPackageUrl,
     atom_dist_url: exports.atomDistUrl,
     npm_config_dist_url: exports.atomDistUrl,
