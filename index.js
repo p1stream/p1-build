@@ -21,7 +21,7 @@ exports.env = {
     p1stream_include_dir: exports.includeDir,
     node_platform: exports.platform,
     node_arch: exports.arch,
-    node_version: exports.version,
+    node_version: exports.nodeVersion,
     atom_shell_version: exports.atomShellVersion,
     atom_shell_package: exports.atomShellPackage,
     atom_shell_package_url: exports.atomShellPackageUrl,
