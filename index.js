@@ -26,8 +26,8 @@ exports.env = {
     atom_shell_package: exports.atomShellPackage,
     atom_shell_package_url: exports.atomShellPackageUrl,
     atom_dist_url: exports.atomDistUrl,
-    npm_config_dist_url: exports.atomDistUrl,
-    npm_config_target: exports.nodeVersion,
+    npm_config_disturl: exports.atomDistUrl,
+    npm_config_target: exports.atomShellVersion,
     npm_config_arch: exports.arch
 };
 
