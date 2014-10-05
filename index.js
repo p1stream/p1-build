@@ -6,8 +6,8 @@ exports.includeDir = path.join(__dirname, 'include');
 exports.platform = process.platform;
 exports.arch = 'x64';
 
-exports.nodeVersion = '0.11.13';
-exports.atomShellVersion = '0.16.3';
+exports.nodeVersion = '0.11.14';
+exports.atomShellVersion = '0.17.1';
 
 exports.atomShellPackage = util.format('atom-shell-v%s-%s-%s.zip',
     exports.atomShellVersion, exports.platform, exports.arch);
