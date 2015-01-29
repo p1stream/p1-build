@@ -7,7 +7,7 @@ exports.platform = process.platform;
 exports.arch = 'x64';
 
 exports.nodeVersion = '0.11.14';
-exports.atomShellVersion = '0.20.8';
+exports.atomShellVersion = '0.21.0';
 
 exports.atomShellPackage = util.format('atom-shell-v%s-%s-%s.zip',
     exports.atomShellVersion, exports.platform, exports.arch);
