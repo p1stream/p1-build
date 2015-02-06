@@ -11,11 +11,7 @@ else
 fi
 
 # Setup environment.
-$(cd "${BASEDIR}" && node -e 'require("p1-build").shell()')
-
-# Swap home directories for npm and node-gyp.
-export REALHOME="${HOME}"
-export HOME="${REALHOME}/.p1stream/.node"
+export p1stream_include_dir="$(cd "${BASEDIR}" && iojs -pe 'require("p1-build").includeDir')"
 
 # Execute command.
 exec $@

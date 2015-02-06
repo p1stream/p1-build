@@ -4,7 +4,7 @@ This repository contains the build environment for [P1stream].
 
 It is used to build P1stream itself and all native modules targetting it. It
 contains the public headers for P1stream, as well as build environment settings
-used by atom-shell, node.js, npm and node-gyp.
+used by io.js, npm and node-gyp.
 
  [P1stream]: https://github.com/p1stream/p1stream
 
