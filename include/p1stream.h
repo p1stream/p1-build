@@ -109,6 +109,7 @@ public:
 
 class video_clock_context;
 class video_source_context;
+class video_hook_context;
 
 // As far as the video mixer is concerned, there's only two threads: the main
 // libuv thread and the video clock thread.
@@ -192,6 +193,33 @@ public:
 #ifdef HAVE_IOSURFACE
     void render_iosurface(IOSurfaceRef surface);
 #endif
+};
+
+// Base for video hooks. Video hooks are called immediately after a frame is
+// rendered, and run on the clock thread.
+class video_hook : public node::ObjectWrap {
+public:
+    // When a hook is linked, it will received video_post_render() calls.
+    // If the link method throws, it should return false.
+    virtual bool link_video_hook(video_hook_context &ctx);
+    virtual void unlink_video_hook(video_hook_context &ctx);
+
+    // Called after the mixer has rendered a frame.
+    virtual void video_post_render(video_hook_context &ctx) = 0;
+};
+
+// Context object passed to the hook.
+class video_hook_context {
+protected:
+    video_hook_context();
+
+    video_hook *hook_;
+    video_mixer *mixer_;
+
+public:
+    // Accessors.
+    video_hook *hook();
+    video_mixer *mixer();
 };
 
 
@@ -338,6 +366,20 @@ inline video_source *video_source_context::source()
 }
 
 inline video_mixer *video_source_context::mixer()
+{
+    return mixer_;
+}
+
+inline video_hook_context::video_hook_context()
+{
+}
+
+inline video_hook *video_hook_context::hook()
+{
+    return hook_;
+}
+
+inline video_mixer *video_hook_context::mixer()
 {
     return mixer_;
 }
