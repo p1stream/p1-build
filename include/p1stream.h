@@ -7,11 +7,14 @@
 #include <functional>
 
 #if __APPLE__
+#   include <OpenGL/gl3.h>
 #   include <TargetConditionals.h>
 #   if TARGET_OS_MAC
 #       include <IOSurface/IOSurface.h>
 #       define HAVE_IOSURFACE
 #   endif
+#else
+#   include <GL/gl.h>
 #endif
 
 namespace p1stream {
@@ -127,6 +130,19 @@ class video_hook_context;
 class video_mixer : public node::ObjectWrap, public lockable {
 protected:
     video_mixer();
+
+    // The texture the mixer renders to.
+    GLuint texture_;
+#ifdef HAVE_IOSURFACE
+    IOSurfaceRef surface_;
+#endif
+
+public:
+    // Accessors
+    GLuint texture();
+#ifdef HAVE_IOSURFACE
+    IOSurfaceRef surface();
+#endif
 };
 
 // Base for video clocks. The clock should start a thread and call back
@@ -341,6 +357,18 @@ inline void main_loop_callback::send()
 inline video_mixer::video_mixer()
 {
 }
+
+inline GLuint video_mixer::texture()
+{
+    return texture_;
+}
+
+#ifdef HAVE_IOSURFACE
+inline IOSurfaceRef video_mixer::surface()
+{
+    return surface_;
+}
+#endif
 
 inline video_clock_context::video_clock_context()
 {
