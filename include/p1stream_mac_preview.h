@@ -10,10 +10,10 @@
 // a send right must be attached on which the peer would like to receive
 // notifications.
 static const mach_msg_id_t p1_preview_request_msg_id = 0xDADAD0D0;
-struct p1_preview_request_msg_t {
+typedef struct {
     mach_msg_header_t header;
     char mixer_id[128];
-};
+} p1_preview_request_msg_t;
 
 // The surface changed. A send right for an IOSurface mach port is attached
 // that can be used to get an IOSurfaceRef on the receiving side. There may be
@@ -26,11 +26,11 @@ static const mach_msg_id_t p1_preview_updated_msg_id = 0xDADA0002;
 typedef mach_msg_empty_rcv_t p1_preview_updated_msg_t;
 
 // Union that can be used to receive messages.
-union p1_preview_msg_t {
+typedef union {
     mach_msg_header_t header;
     p1_preview_set_surface_msg_t set_surface;
     p1_preview_updated_msg_t updated;
-};
+} p1_preview_msg_t;
 
 
 // Request a preview port for the given mixer ID. The return value can also be
