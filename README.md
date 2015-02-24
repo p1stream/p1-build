@@ -33,4 +33,4 @@ For incremental builds, you can also do something like:
 
 [GPLv3](LICENSE)
 
-© 2014 — Stéphan Kochen
+© 2015 — Stéphan Kochen
