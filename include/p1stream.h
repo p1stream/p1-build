@@ -1,6 +1,7 @@
 #ifndef p1stream_h
 #define p1stream_h
 
+#include <stdarg.h>
 #include <uv.h>
 #include <node.h>
 #include <node_object_wrap.h>
@@ -20,7 +21,7 @@
 namespace p1stream {
 
 
-// ----- PODs----
+// ----- PODs -----
 
 typedef int64_t frame_time_t;
 
@@ -35,7 +36,7 @@ struct dimensions_t {
 };
 
 
-// ----- Utility types ----
+// ----- Utility types -----
 
 // Access high resolution, monotonic system clock.
 int64_t system_time();
@@ -108,6 +109,123 @@ public:
 };
 
 
+// ----- Event handling -----
+
+struct event;
+class event_buffer;
+struct event_buffer_copy;
+class buffer_slicer;
+
+// Threads send events to the main thread, which can contain data or log
+// messages. Events are queued in a fixed size buffer, then copy'd out by
+// the main thread to be emitted one by one.
+//
+// Locking and signalling is left to the user.
+
+// The event structure as it lives in the buffer.
+struct event {
+    uint32_t id;    // FourCC identifier.
+    uint32_t size;  // Size of data.
+    char data[0];   // Struct is followed by data.
+
+    // Number of padding bytes after data.
+    inline uint32_t pad();
+    // Total size of struct + data + padding.
+    inline uint32_t total_size();
+    // Return a pointer past this event, accounting for 32-bit alignment.
+    event *next();
+};
+
+// Event buffer containing consecutive events.
+//
+// All access to instances of this class should be within a lock. After
+// calling one of the emit*() methods, the user should somehow signal the
+// main thread to do a copy_out()
+class event_buffer final {
+private:
+    int size_;
+    int used_;
+    int stalled_;
+    char *data_;
+
+public:
+    event_buffer(int size = 65536);
+    ~event_buffer();
+
+    // The following emit methods all return NULL if the buffer stalled.
+
+    // Emit an empty event.
+    event *emit(uint32_t id);
+    // Emit an event with a formatted string.
+    event *emitv(uint32_t id, const char *format, va_list ap);
+    event *emitf(uint32_t id, const char *format, ...)
+        __attribute__((format(printf, 3, 4)));
+    // Emit an event with raw data. Caller must fill the returned event data.
+    event *emitd(uint32_t id, int size);
+
+    // Create a copy of the buffer data and clear the buffer itself.
+    event_buffer_copy *copy_out();
+};
+
+// Contains a copy of an event_buffer.
+struct event_buffer_copy {
+    int size;
+    int stalled;
+    char data[0];
+
+    // Call a JS function for each event in the buffer copy. Call this after
+    // releasing the lock that was holding the original event_buffer.
+    //
+    // The transform function should create a JS value for the given event
+    // data. The function is not called for standard events defined below.
+    //
+    // Calling this method transfers ownership of the entire struct, as it will
+    // be tied to a Buffer object.
+    void callback(
+        v8::Isolate *isolate, v8::Handle<v8::Object> recv, v8::Handle<v8::Function> fn,
+        v8::Local<v8::Value> (*transform)(v8::Isolate *isolate, event &ev, buffer_slicer &slicer)
+    );
+};
+
+// Helper that creates buffer slices. The transform function from
+// event_buffer_copy::callback receives a stack allocated instance of this as
+// a parameter.
+class buffer_slicer {
+private:
+    v8::Isolate *isolate_;
+    v8::Local<v8::Object> buffer_;
+    v8::Local<v8::Value> buffer_proto_;
+    v8::Local<v8::String> length_sym_;
+    v8::Local<v8::String> parent_sym_;
+
+public:
+    buffer_slicer(v8::Local<v8::Object> buffer);
+
+    // Returns a new buffer object for the given data and length, which should
+    // be part of the original buffer memory area.
+    v8::Local<v8::Object> slice(char *data, uint32_t length);
+};
+
+// Standard event IDs.
+
+// Logging messages. These contain string data.
+#define EV_LOG_TRACE 'ltrc'
+#define EV_LOG_DEBUG 'ldbg'
+#define EV_LOG_INFO  'linf'
+#define EV_LOG_WARN  'lwrn'
+#define EV_LOG_ERROR 'lerr'
+#define EV_LOG_FATAL 'lfat'
+
+// Generic failure event, which can be used to signal to JS that the object is
+// now in a useless state and should be destroyed. Usually preceded by
+// relevant log messages. Contains no data.
+#define EV_FAILURE 'fail'
+
+// Stall notification. This is automatically created at the end of emit_copy,
+// when the buffer stalled flag was set.
+#define EV_STALLED 'stal'
+
+
 // ----- Video types ----
 
 class video_clock_context;
@@ -150,8 +268,7 @@ public:
 class video_clock : public node::ObjectWrap, public lockable {
 public:
     // When a clock is linked, it should start calling tick().
-    // If the link method throws, it should return false.
-    virtual bool link_video_clock(video_clock_context &ctx) = 0;
+    virtual void link_video_clock(video_clock_context &ctx) = 0;
     virtual void unlink_video_clock(video_clock_context &ctx) = 0;
 
     // Get the clock rate. The clock should not call back on tick() unless it
@@ -180,8 +297,7 @@ public:
 class video_source : public node::ObjectWrap {
 public:
     // When a source is linked, it will receive produce_video_frame() calls.
-    // If the link method throws, it should return false.
-    virtual bool link_video_source(video_source_context &ctx);
+    virtual void link_video_source(video_source_context &ctx);
     virtual void unlink_video_source(video_source_context &ctx);
 
     // Called when the mixer is rendering a frame. Should call one of the
@@ -216,8 +332,7 @@ public:
 class video_hook : public node::ObjectWrap {
 public:
     // When a hook is linked, it will received video_post_render() calls.
-    // If the link method throws, it should return false.
-    virtual bool link_video_hook(video_hook_context &ctx);
+    virtual void link_video_hook(video_hook_context &ctx);
     virtual void unlink_video_hook(video_hook_context &ctx);
 
     // Called after the mixer has rendered a frame.
@@ -256,8 +371,7 @@ protected:
 class audio_source : public node::ObjectWrap {
 public:
     // When a source is linked, it should start calling render_buffer().
-    // If the link method throws, it should return false.
-    virtual bool link_audio_source(audio_source_context &ctx) = 0;
+    virtual void link_audio_source(audio_source_context &ctx) = 0;
     virtual void unlink_audio_source(audio_source_context &ctx) = 0;
 };
 
@@ -428,6 +542,113 @@ inline audio_source *audio_source_context::source()
 inline audio_mixer *audio_source_context::mixer()
 {
     return mixer_;
+}
+
+inline uint32_t event::pad()
+{
+    const uint32_t r = size & 0x3;
+    return r ? 0x4 - r : 0;
+}
+
+inline uint32_t event::total_size()
+{
+    return sizeof(event) + size + pad();
+}
+
+inline event *event::next()
+{
+    return (event *) (data + size + pad());
+}
+
+inline event_buffer::event_buffer(int size)
+    : size_(size), used_(0), stalled_(0)
+{
+    data_ = new char[size_];
+}
+
+inline event_buffer::~event_buffer()
+{
+    delete[] data_;
+}
+
+inline event *event_buffer::emit(uint32_t id)
+{
+    const int data_space = size_ - used_ - sizeof(event);
+    event * const ev = (event *) (data_  + used_);
+
+    if (data_space < 0) {
+        stalled_++;
+        return NULL;
+    }
+    else {
+        ev->id = id;
+        ev->size = 0;
+        used_ += sizeof(event);
+        return ev;
+    }
+}
+
+inline event *event_buffer::emitv(uint32_t id, const char *format, va_list ap)
+{
+    const int data_space = size_ - used_ - sizeof(event);
+    event * const ev = (event *) (data_ + used_);
+
+    int size = vsnprintf(ev->data, data_space, format, ap);
+    if (size < 0) {
+        return NULL;
+    }
+    else if (size > data_space - 1) {
+        stalled_++;
+        return NULL;
+    }
+    else {
+        ev->id = id;
+        ev->size = size;
+        used_ += ev->total_size();
+        return ev;
+    }
+}
+
+inline event *event_buffer::emitf(uint32_t id, const char *format, ...)
+{
+    va_list ap;
+    va_start(ap, format);
+    event *ev = emitv(id, format, ap);
+    va_end(ap);
+    return ev;
+}
+
+inline event *event_buffer::emitd(uint32_t id, int size)
+{
+    const int data_space = size_ - used_ - sizeof(event);
+    event * const ev = (event *) (data_ + used_);
+
+    if (size > data_space) {
+        stalled_++;
+        return NULL;
+    }
+    else {
+        ev->id = id;
+        ev->size = size;
+        used_ += ev->total_size();
+        return ev;
+    }
+}
+
+inline event_buffer_copy *event_buffer::copy_out()
+{
+    if (used_ == 0)
+        return NULL;
+
+    auto *ret = (event_buffer_copy *) new char[sizeof(event_buffer_copy) + used_];
+    memcpy(ret->data, data_, used_);
+    ret->size = used_;
+    ret->stalled = stalled_;
+
+    used_ = 0;
+    stalled_ = 0;
+
+    return ret;
 }
 
 
