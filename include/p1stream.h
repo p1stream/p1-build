@@ -97,10 +97,8 @@ public:
 // ----- Event handling -----
 
 // Threads send events to the main thread, which can contain data or log
-// messages. Events are queued in a fixed size buffer, then copy'd out by
+// messages. Events are queued in a fixed size buffer, then copiedd out by
 // the main thread to be emitted one by one.
-//
-// Locking and signalling is left to the user.
 
 // The event structure as it lives in the buffer.
 struct event {
@@ -114,7 +112,8 @@ struct event {
     inline uint32_t total_size();
 };
 
-// Helper that is used to create buffer slices.
+// Helper that is used to create buffer slices. The transform function defined
+// below is given a stack-allocated instance of this.
 class buffer_slicer {
 private:
     v8::Isolate *isolate_;
@@ -135,10 +134,6 @@ public:
 typedef v8::Local<v8::Value> (*event_transform)(v8::Isolate *isolate, event &ev, buffer_slicer &slicer);
 
 // Event buffer containing consecutive events.
-//
-// All access to instances of this class should be within a lock. After
-// calling one of the emit*() methods, the user should somehow signal the
-// main thread to do a copy_out()
 class event_buffer final {
 private:
     uv_async_t async_;
@@ -158,6 +153,10 @@ private:
     static void async_cb(uv_async_t *handle);
 
 public:
+    // Constructor takes an optional lockable to synchronize access with, an
+    // optional transform function to handle custom events, and an optional
+    // buffer size which is useful when more data than just log messages are
+    // transferred using the buffer.
     event_buffer(
         lockable *lock = nullptr, event_transform transform = nullptr,
         int size = 4096  // 4 KiB default event buffer
@@ -166,16 +165,27 @@ public:
 
     // Set the callback to call for events.
     void set_callback(v8::Handle<v8::Context> context, v8::Handle<v8::Function> callback);
+
     // Flush buffered events to the callback. Usually happens automatically,
     // but useful to call before destruction.
+    //
+    // This method shortly acquires the lock to create a copy of the buffer,
+    // then does actual JS callbacks outside the lock.
     void flush();
 
-    // The following emit methods all return nullptr if the buffer stalled.
-    // They should be called with the lock held.
-
-    // Emit an event with optional data. Caller must fill the event data.
+    // Emit an event with optional data. These methods return the event or
+    // nullptr if the buffer is out of space. In the latter case, the stall
+    // counter is incremented as well.
+    //
+    // The regular emit() method expects the caller to fill the returned event
+    // object's data, if the event carries any.
+    //
+    // The emitv() and emitf() methods create an event with data prefilled
+    // using the given format string and parameters.
+    //
+    // These methods require the caller to synchronize access. (Makes sure the
+    // lock is held or no other threads are active.)
     event *emit(uint32_t id, int size = 0);
-    // Emit an event with a formatted string.
     event *emitv(uint32_t id, const char *format, va_list ap);
     event *emitf(uint32_t id, const char *format, ...)
         __attribute__((format(printf, 3, 4)));
@@ -196,8 +206,8 @@ public:
 // relevant log messages. Contains no data.
 #define EV_FAILURE 'fail'
 
-// Stall notification. This is automatically created at the end of emit_copy,
-// when the buffer stalled flag was set.
+// Stall notification. This is automatically created at of a flush(), when the
+// buffer stall counter is non-zero.
 #define EV_STALLED 'stal'
 
 
@@ -207,16 +217,16 @@ class video_clock_context;
 class video_source_context;
 class video_hook_context;
 
-// As far as the video mixer is concerned, there's only two threads: the main
+// As far as the video mixer is concerned, there're only two threads: the main
 // libuv thread and the video clock thread.
-
+//
 // The clock is responsible for the video thread and lock; all of the following
 // methods are called with video clock locked if there is one. If there is no
 // video clock to lock, there is nothing but the main libuv thread.
-
+//
 // For convenience, the mixer implements lockable as a proxy to the clock if
 // there is one, otherwise it's a no-op.
-
+//
 // Sources may introduce their own threads, but will have to manage them on
 // their own as well.
 
