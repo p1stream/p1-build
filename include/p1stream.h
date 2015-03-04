@@ -530,7 +530,7 @@ inline event *event_buffer::emit(uint32_t id, int size)
     }
     else {
         ev->id = id;
-        ev->size = 0;
+        ev->size = size;
         used_ += ev->total_size();
         return ev;
     }
