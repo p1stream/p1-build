@@ -93,6 +93,27 @@ public:
     bool wait(uint64_t timeout);
 };
 
+// A heap-allocated uv_async, so that we can have one using regular destructor
+// mechanics. (Performance isn't a huge concern here anyway.)
+class async final {
+private:
+    struct ctx {
+        uv_async_t async;
+        std::function<void ()> fn;
+    };
+
+    ctx *ctx_;
+
+    static void signal_cb(uv_async_t *handle);
+    static void close_cb(uv_handle_t *handle);
+
+public:
+    async(std::function<void ()> fn);
+    ~async();
+
+    void signal();
+};
+
 
 // ----- Event handling -----
 
@@ -136,8 +157,6 @@ typedef v8::Local<v8::Value> (*event_transform)(v8::Isolate *isolate, event &ev,
 // Event buffer containing consecutive events.
 class event_buffer final {
 private:
-    uv_async_t async_;
-
     int size_;
     int used_;
     int stalled_;
@@ -145,12 +164,13 @@ private:
 
     lockable *lock_;
     event_transform transform_;
+    async async_;
+
     v8::Isolate *isolate_;
     v8::Persistent<v8::Context> context_;
     v8::Persistent<v8::Function> callback_;
 
     void signal_main_thread();
-    static void async_cb(uv_async_t *handle);
 
 public:
     // Constructor takes an optional lockable to synchronize access with, an
@@ -522,10 +542,8 @@ inline uint32_t event::total_size()
 
 inline void event_buffer::signal_main_thread()
 {
-    if (used_ == 0 && stalled_ == 0) {
-        if (uv_async_send(&async_))
-            abort();
-    }
+    if (used_ == 0 && stalled_ == 0)
+        async_.signal();
 }
 
 inline event *event_buffer::emit(uint32_t id, int size)
@@ -575,6 +593,26 @@ inline event *event_buffer::emitf(uint32_t id, const char *format, ...)
     event *ev = emitv(id, format, ap);
     va_end(ap);
     return ev;
+}
+
+inline async::async(std::function<void ()> fn)
+{
+    ctx_ = new ctx;
+    ctx_->fn = fn;
+    if (uv_async_init(uv_default_loop(), &ctx_->async, signal_cb))
+        abort();
+}
+
+inline async::~async()
+{
+    ctx_->fn = nullptr;
+    uv_close((uv_handle_t *) &ctx_->async, close_cb);
+}
+
+inline void async::signal()
+{
+    if (uv_async_send(&ctx_->async))
+        abort();
 }
 
 
