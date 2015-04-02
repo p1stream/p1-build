@@ -318,16 +318,29 @@ protected:
     video_source *source_;
     video_mixer *mixer_;
 
+    GLuint texture_;
+
 public:
     // Accessors.
     video_source *source();
     video_mixer *mixer();
 
+    // Get a texture for this source. Should only ever be called during
+    // produce_video_frame(). The texture is created lazily, so that the source
+    // may provide its own texture by only ever calling render_texture().
+    GLuint texture();
+    // Check if the lazy texture is present.
+    bool has_texture();
+
     // Render callbacks that should be called by sources from within
     // produce_video_frame().
+
+    // Render the currently bound texture.
     void render_texture();
+    // Render a buffer containing BGRA data.
     void render_buffer(dimensions_t dimensions, void *data);
 #ifdef TARGET_OS_MAC
+    // Render an IOSurface containing BGRA data.
     void render_iosurface(IOSurfaceRef surface);
 #endif
 };
@@ -488,8 +501,20 @@ inline video_mixer *video_clock_context::mixer()
     return mixer_;
 }
 
-inline video_source_context::video_source_context()
+inline video_source_context::video_source_context() : texture_(0)
 {
+}
+
+inline GLuint video_source_context::texture()
+{
+    if (texture_ == 0)
+        glGenTextures(1, &texture_);
+    return texture_;
+}
+
+inline bool video_source_context::has_texture()
+{
+    return texture_ != 0;
 }
 
 inline video_source *video_source_context::source()
