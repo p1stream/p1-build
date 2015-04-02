@@ -7,13 +7,11 @@
 #include <node_object_wrap.h>
 #include <functional>
 
-#if __APPLE__
+#ifdef TARGET_OS_MAC
 #   include <OpenGL/gl3.h>
+#   include <OpenGL/OpenGL.h>
 #   include <TargetConditionals.h>
-#   if TARGET_OS_MAC
-#       include <IOSurface/IOSurface.h>
-#       define HAVE_IOSURFACE
-#   endif
+#   include <IOSurface/IOSurface.h>
 #else
 #   include <GL/gl.h>
 #endif
@@ -256,14 +254,16 @@ protected:
 
     // The texture the mixer renders to.
     GLuint texture_;
-#ifdef HAVE_IOSURFACE
+#ifdef TARGET_OS_MAC
+    CGLContextObj cgl_context_;
     IOSurfaceRef surface_;
 #endif
 
 public:
     // Accessors
     GLuint texture();
-#ifdef HAVE_IOSURFACE
+#ifdef TARGET_OS_MAC
+    CGLContextObj cgl_context();
     IOSurfaceRef surface();
 #endif
 };
@@ -327,7 +327,7 @@ public:
     // produce_video_frame().
     void render_texture();
     void render_buffer(dimensions_t dimensions, void *data);
-#ifdef HAVE_IOSURFACE
+#ifdef TARGET_OS_MAC
     void render_iosurface(IOSurfaceRef surface);
 #endif
 };
@@ -462,7 +462,12 @@ inline GLuint video_mixer::texture()
     return texture_;
 }
 
-#ifdef HAVE_IOSURFACE
+#ifdef TARGET_OS_MAC
+inline CGLContextObj video_mixer::cgl_context()
+{
+    return cgl_context_;
+}
+
 inline IOSurfaceRef video_mixer::surface()
 {
     return surface_;
